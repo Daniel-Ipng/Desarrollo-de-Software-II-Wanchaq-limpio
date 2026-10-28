@@ -166,7 +166,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       icono: Icons.people_outline,
                       titulo: 'Ciudadanos',
                       descripcion: 'Usuarios, roles y estado de las cuentas.',
-                      onTap: _abrirAdministracion,
+                      onTap: () => _abrirAdministracion(pestana: 0),
                       contador: _resumen?.usuarios,
                     ),
                     _modulo(
@@ -174,7 +174,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       icono: Icons.local_shipping_outlined,
                       titulo: 'Flota y operación',
                       descripcion: 'Camiones, zonas, rutas y tipos de residuos.',
-                      onTap: _abrirAdministracion,
+                      onTap: () => _abrirAdministracion(pestana: 1),
                       contador: _resumen?.camiones,
                     ),
                     const SizedBox(height: 10),
@@ -402,11 +402,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _abrirAdministracion() {
+  void _abrirAdministracion({required int pestana}) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => AdministracionScreen(
           repositorio: AdministracionRepository(),
+          reportesRepositorio: widget.reportesRepositorio,
+          pestanaInicial: pestana,
         ),
       ),
     );
@@ -432,11 +434,55 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
   late List<Reporte> _reportes;
   EstadoReporte? _filtro;
   bool _guardando = false;
+  bool _cargando = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _reportes = [...widget.reportes];
+    _cargarReportes();
+  }
+
+  Future<void> _cargarReportes() async {
+    if (mounted) {
+      setState(() {
+        _cargando = true;
+        _error = null;
+      });
+    }
+    try {
+      final reportes = await widget.repositorio
+          .listarTodosParaAdministrador();
+      if (!mounted) return;
+      setState(() {
+        _reportes = reportes;
+        _cargando = false;
+      });
+    } on PostgrestException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cargando = false;
+        _error = _mensajeError(error);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _cargando = false;
+        _error =
+            'No se pudieron cargar los reportes. Revisa la sesión del administrador y las políticas RLS.';
+      });
+    }
+  }
+
+  String _mensajeError(PostgrestException error) {
+    if (error.code == '42501') {
+      return 'Supabase rechazó la consulta. Ejecuta schema_supabase.sql y verifica que tu perfil tenga rol admin activo.';
+    }
+    if (error.code == '42P01') {
+      return 'La tabla reportes no existe en Supabase. Ejecuta schema_supabase.sql.';
+    }
+    return 'No se pudieron cargar los reportes (${error.code}).';
   }
 
   @override
@@ -448,11 +494,7 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Incidencias')),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await widget.alActualizar();
-          if (!context.mounted) return;
-          Navigator.of(context).pop();
-        },
+        onRefresh: _cargarReportes,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -468,10 +510,39 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            if (filtrados.isEmpty)
+            if (_cargando)
+              const Padding(
+                padding: EdgeInsets.all(48),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    const Icon(Icons.cloud_off_outlined, size: 44),
+                    const SizedBox(height: 12),
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _cargarReportes,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Reintentar'),
+                    ),
+                  ],
+                ),
+              )
+            else if (filtrados.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(32),
-                child: Center(child: Text('No hay incidencias en este estado.')),
+                child: Center(
+                  child: Text(
+                    'No hay reportes para este filtro. Si esperabas ver '
+                    'registros existentes, actualiza y verifica las políticas '
+                    'administrativas en Supabase.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               )
             else
               ...filtrados.map(_tarjeta),
@@ -510,6 +581,11 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         isThreeLine: true,
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => _DetalleIncidenciaAdminScreen(reporte: reporte),
+          ),
+        ),
         trailing: _guardando
             ? const SizedBox(
                 width: 24,
@@ -546,7 +622,7 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
         if (indice >= 0) _reportes[indice] = actualizado;
         _guardando = false;
       });
-      await widget.alActualizar();
+      await Future.wait([_cargarReportes(), widget.alActualizar()]);
     } catch (_) {
       if (!mounted) return;
       setState(() => _guardando = false);
@@ -555,6 +631,197 @@ class _IncidenciasAdminScreenState extends State<_IncidenciasAdminScreen> {
       );
     }
   }
+}
+
+class _DetalleIncidenciaAdminScreen extends StatelessWidget {
+  final Reporte reporte;
+
+  const _DetalleIncidenciaAdminScreen({required this.reporte});
+
+  @override
+  Widget build(BuildContext context) {
+    final tieneImagen = reporte.imagenUrl?.isNotEmpty == true;
+    final tieneCoordenadas = reporte.latitud != null &&
+        reporte.longitud != null &&
+        reporte.latitud!.isFinite &&
+        reporte.longitud!.isFinite;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Reporte #${reporte.id}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(18),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    child: Icon(_iconoTipo(reporte.tipo)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          reporte.tipo.etiqueta,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ChipEstado(estado: reporte.estado),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _dato('Descripción', reporte.descripcion, Icons.notes_outlined),
+          _dato('Zona o dirección', reporte.zona, Icons.place_outlined),
+          _dato(
+            'Fecha de registro',
+            _fecha(reporte.creadoEn.toLocal()),
+            Icons.schedule_outlined,
+          ),
+          _dato('Ciudadano', reporte.ciudadanoId, Icons.person_outline),
+          if (tieneCoordenadas) ...[
+            _dato(
+              'Coordenadas GPS',
+              '${reporte.latitud!.toStringAsFixed(6)}, '
+                  '${reporte.longitud!.toStringAsFixed(6)}',
+              Icons.my_location_outlined,
+            ),
+            SizedBox(
+              height: 260,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(
+                      reporte.latitud!,
+                      reporte.longitud!,
+                    ),
+                    initialZoom: 16,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.ecorutas.wanchaq',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(reporte.latitud!, reporte.longitud!),
+                          width: 48,
+                          height: 48,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 42,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'Mapa © OpenStreetMap contributors',
+                style: TextStyle(fontSize: 11),
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          Text(
+            'Evidencia fotográfica',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (tieneImagen)
+            GestureDetector(
+              onTap: () => _mostrarImagen(context, reporte.imagenUrl!),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.network(
+                  reporte.imagenUrl!,
+                  height: 300,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => _sinImagen(
+                    'No se pudo cargar la imagen asociada.',
+                  ),
+                ),
+              ),
+            )
+          else
+            _sinImagen('Este reporte no tiene una imagen asociada.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _dato(String titulo, String valor, IconData icono) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: ListTile(
+        leading: Icon(icono),
+        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(valor),
+      ),
+    );
+  }
+
+  Widget _sinImagen(String mensaje) {
+    return Container(
+      height: 120,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Text(mensaje, textAlign: TextAlign.center),
+    );
+  }
+
+  void _mostrarImagen(BuildContext context, String url) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => Dialog(
+        child: InteractiveViewer(
+          child: Image.network(url, fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+
+  String _fecha(DateTime fecha) {
+    String dos(int valor) => valor.toString().padLeft(2, '0');
+    return '${dos(fecha.day)}/${dos(fecha.month)}/${fecha.year} '
+        '${dos(fecha.hour)}:${dos(fecha.minute)}';
+  }
+
+  IconData _iconoTipo(TipoIncidencia tipo) => switch (tipo) {
+    TipoIncidencia.residuosAcumulados => Icons.delete_sweep_outlined,
+    TipoIncidencia.contenedorLleno => Icons.delete_outline,
+    TipoIncidencia.faltaRecoleccion => Icons.local_shipping_outlined,
+    TipoIncidencia.puntoIlegal => Icons.warning_amber_outlined,
+    TipoIncidencia.otro => Icons.assignment_outlined,
+  };
 }
 
 class _MapaAdminScreen extends StatelessWidget {

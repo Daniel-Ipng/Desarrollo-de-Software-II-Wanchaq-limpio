@@ -694,10 +694,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    IF NOT public.es_administrador() AND (
+    IF NOT public.es_administrador()
+       AND current_user NOT IN ('postgres', 'supabase_admin')
+       AND (
         NEW.rol IS DISTINCT FROM OLD.rol
         OR NEW.activo IS DISTINCT FROM OLD.activo
-    ) THEN
+       )
+    THEN
         RAISE EXCEPTION 'No puedes modificar los campos privilegiados del perfil';
     END IF;
     RETURN NEW;

@@ -10,10 +10,14 @@ con Supabase Auth, PostgreSQL, Storage y RLS.
    en el SQL Editor.
 3. El archivo `schema_supabase.sql` ya incluye las tablas, relaciones y
    políticas RLS de los módulos ciudadanos, administrativos y operativos.
-4. En Storage crea un bucket público llamado `reportes`.
-5. Obtén la URL del proyecto y la publishable key desde **Project Settings >
+4. Opcionalmente ejecuta [`backend/database/seed_demo.sql`](backend/database/seed_demo.sql)
+   para cargar zonas, camiones, rutas, horarios, recolecciones, reportes de
+   prueba y notificaciones. Se generan varias incidencias por cada ciudadano
+   activo existente. Ese archivo no crea usuarios Auth ni contraseñas.
+5. En Storage crea un bucket público llamado `reportes`.
+6. Obtén la URL del proyecto y la publishable key desde **Project Settings >
    API**.
-6. Inicia la app inyectando la configuración:
+7. Inicia la app inyectando la configuración:
 
 ```bash
 flutter run --dart-define=SUPABASE_URL=https://tvlxdjhbxrqtxxxsprde.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_2XSV3ulWROSJY1YGE-lP0g_FfCrtZ0l

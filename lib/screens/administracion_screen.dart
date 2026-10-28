@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
 
+import '../models/reporte.dart';
 import '../repositories/administracion_repository.dart';
+import '../repositories/reporte_repository.dart';
 
 class AdministracionScreen extends StatefulWidget {
   final AdministracionRepository repositorio;
+  final ReporteRepository reportesRepositorio;
+  final int pestanaInicial;
 
-  const AdministracionScreen({super.key, required this.repositorio});
+  const AdministracionScreen({
+    super.key,
+    required this.repositorio,
+    required this.reportesRepositorio,
+    this.pestanaInicial = 0,
+  });
 
   @override
   State<AdministracionScreen> createState() => _AdministracionScreenState();
 }
 
 class _AdministracionScreenState extends State<AdministracionScreen> {
-  int _tab = 0;
+  late int _tab;
   bool _cargando = true;
   String? _error;
   List<Map<String, dynamic>> _datos = [];
+  List<Reporte> _reportes = [];
   final _busqueda = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _tab = widget.pestanaInicial.clamp(0, 6);
     _cargar();
   }
 
@@ -42,10 +53,17 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
         2 => await widget.repositorio.listarZonas(),
         3 => await widget.repositorio.listarRutas(),
         4 => await widget.repositorio.listarTiposResiduo(),
-        5 => await widget.repositorio.listarRecolecciones(),
+        5 => <Map<String, dynamic>>[],
+        6 => await widget.repositorio.listarRecolecciones(),
         _ => await widget.repositorio.listarAuditoria(),
       };
-      if (mounted) setState(() => _datos = datos);
+      if (_tab == 5) {
+        final reportes = await widget.reportesRepositorio
+            .listarTodosParaAdministrador();
+        if (mounted) setState(() => _reportes = reportes);
+      } else if (mounted) {
+        setState(() => _datos = datos);
+      }
     } catch (error) {
       if (mounted) setState(() => _error = _mensajeError(error));
     } finally {
@@ -55,9 +73,16 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
 
   String _mensajeError(Object error) {
     final texto = error.toString();
-    return texto.contains('duplicate') || texto.contains('23505')
-        ? 'Ya existe un registro con ese identificador.'
-        : 'No se pudo cargar el módulo. Comprueba los permisos y la conexión.';
+    if (texto.contains('duplicate') || texto.contains('23505')) {
+      return 'Ya existe un registro con ese identificador.';
+    }
+    if (texto.contains('42P01') || texto.contains('does not exist')) {
+      return 'Falta ejecutar schema_supabase.sql en el proyecto Supabase.';
+    }
+    if (texto.contains('42501') || texto.contains('permission denied')) {
+      return 'Supabase rechazó la operación. Revisa las políticas RLS y el rol administrador.';
+    }
+    return 'No se pudo cargar el módulo. Comprueba los permisos y la conexión.';
   }
 
   @override
@@ -68,6 +93,7 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
       'Zonas',
       'Rutas',
       'Residuos',
+      'Reportes',
       'Recolecciones',
       'Auditoría',
     ];
@@ -149,6 +175,7 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
         ),
       );
     }
+    if (_tab == 5) return _cuerpoReportes();
     var datos = _datos;
     if (_tab == 0 && _busqueda.text.trim().isNotEmpty) {
       final termino = _busqueda.text.trim().toLowerCase();
@@ -159,6 +186,7 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
         return texto.contains(termino);
       }).toList();
     }
+
     if (datos.isEmpty) return const Center(child: Text('No hay registros para mostrar.'));
     return RefreshIndicator(
       onRefresh: _cargar,
@@ -170,6 +198,41 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
     );
   }
 
+  Widget _cuerpoReportes() {
+    if (_reportes.isEmpty) {
+      return const Center(child: Text('No hay reportes registrados.'));
+    }
+    return RefreshIndicator(
+      onRefresh: _cargar,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _reportes.length,
+        itemBuilder: (_, index) {
+          final reporte = _reportes[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              leading: CircleAvatar(
+                child: Icon(
+                  reporte.imagenUrl == null
+                      ? Icons.assignment_outlined
+                      : Icons.photo_camera_outlined,
+                ),
+              ),
+              title: Text('Reporte #${reporte.id} · ${reporte.tipo.etiqueta}'),
+              subtitle: Text(
+                '${reporte.zona}\n${reporte.descripcion}\nEstado: ${reporte.estado.etiqueta}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              isThreeLine: true,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _tarjeta(Map<String, dynamic> dato) {
     final titulo = switch (_tab) {
       0 => '${dato['nombres'] ?? ''} ${dato['apellidos'] ?? ''}'.trim(),
@@ -177,16 +240,16 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
       2 => '${dato['nombre'] ?? ''}',
       3 => '${dato['nombre'] ?? ''}',
       4 => '${dato['nombre'] ?? ''}',
-      5 => 'Recolección #${dato['id'] ?? ''}',
+      6 => 'Recolección #${dato['id'] ?? ''}',
       _ => '${dato['entidad'] ?? ''} · ${dato['operacion'] ?? ''}',
     };
     final subtitulo = switch (_tab) {
       0 => '${dato['correo'] ?? ''}\nRol: ${dato['rol'] ?? 'ciudadano'} · ${dato['activo'] == true ? 'Activo' : 'Inactivo'}',
-      1 => 'Estado: ${dato['estado'] ?? ''} · Zona: ${(dato['zonas'] as Map?)?['nombre'] ?? 'Sin asignar'}',
+      1 => 'Estado: ${dato['estado'] ?? ''} · Zona ID: ${dato['zona_id'] ?? 'Sin asignar'}',
       2 => '${dato['descripcion'] ?? 'Sin descripción'} · Contenedores: ${dato['contenedores'] ?? 0}',
-      3 => 'Zona: ${(dato['zonas'] as Map?)?['nombre'] ?? 'Sin asignar'} · Turno: ${dato['turno'] ?? ''}',
+      3 => 'Zona ID: ${dato['zona_id'] ?? 'Sin asignar'} · Turno: ${dato['turno'] ?? ''}',
       4 => '${dato['descripcion'] ?? 'Sin descripción'} · Contenedor: ${dato['contenedor_recomendado'] ?? 'Sin definir'}',
-      5 => '${dato['tipo_residuo'] ?? ''} · ${dato['cantidad_kg'] ?? 0} kg · ${dato['estado'] ?? ''}',
+      6 => '${dato['tipo_residuo'] ?? ''} · ${dato['cantidad_kg'] ?? 0} kg · ${dato['estado'] ?? ''}',
       _ => '${dato['creado_en'] ?? ''} · Registro: ${dato['registro_id'] ?? 'N/D'}',
     };
     return Card(
@@ -217,7 +280,7 @@ class _AdministracionScreenState extends State<AdministracionScreen> {
     1 => Icons.local_shipping_outlined,
     2 => Icons.location_on_outlined,
     3 => Icons.route_outlined,
-    5 => Icons.recycling_outlined,
+    6 => Icons.recycling_outlined,
     _ => Icons.history_outlined,
   };
 

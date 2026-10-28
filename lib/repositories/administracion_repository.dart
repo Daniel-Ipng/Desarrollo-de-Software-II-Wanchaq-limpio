@@ -95,7 +95,12 @@ class AdministracionRepository {
     bool? activo,
   }) async {
     await verificarAcceso();
-    final datos = await _db.from('perfiles').select('*, zonas(nombre)').order('nombres');
+    final datos = await _db
+        .from('perfiles')
+        .select(
+          'id, nombres, apellidos, dni, correo, telefono, rol, zona_id, activo',
+        )
+        .order('nombres');
     var usuarios = _maps(datos);
     if (rol != null) usuarios = usuarios.where((u) => u['rol'] == rol).toList();
     if (activo != null) {
@@ -120,7 +125,7 @@ class AdministracionRepository {
 
   Future<List<Map<String, dynamic>>> listarCamiones() async {
     await verificarAcceso();
-    return _maps(await _db.from('camiones').select('*, zonas(nombre)').order('placa'));
+    return _maps(await _db.from('camiones').select().order('placa'));
   }
 
   Future<void> guardarCamion({
@@ -176,7 +181,7 @@ class AdministracionRepository {
     await verificarAcceso();
     return _maps(await _db
         .from('rutas')
-        .select('*, zonas(nombre), camiones(placa)')
+        .select()
         .order('nombre'));
   }
 
@@ -203,7 +208,7 @@ class AdministracionRepository {
   Future<List<Map<String, dynamic>>> listarRecolecciones() async {
     await verificarAcceso();
     return _maps(await _db.from('recolecciones').select(
-      'id, tipo_residuo, cantidad_kg, recolectado_en, estado, observaciones, zonas(nombre), camiones(placa)',
+      'id, zona_id, camion_id, tipo_residuo, cantidad_kg, recolectado_en, estado, observaciones',
     ).order('recolectado_en', ascending: false));
   }
 
