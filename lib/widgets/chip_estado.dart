@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '../models/reporte.dart';
+import '../theme/colores_app.dart';
 
 /// Chip de estado que muestra el estado de un reporte con color semántico.
+///
+/// Paleta: naranja (pendiente), azul (en proceso) y verde (resuelto).
 class ChipEstado extends StatelessWidget {
   final EstadoReporte estado;
 
@@ -9,18 +13,30 @@ class ChipEstado extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (color, icono) = switch (estado) {
-      EstadoReporte.pendiente => (Colors.orange, Icons.schedule),
-      EstadoReporte.enProceso => (Colors.blue, Icons.autorenew),
-      EstadoReporte.resuelto => (Colors.green, Icons.check_circle),
+    // (color del texto e ícono, color de fondo, ícono)
+    final (color, fondo, icono) = switch (estado) {
+      EstadoReporte.pendiente => (
+        ColoresApp.advertencia,
+        const Color(0xFFFEF0DC),
+        Icons.schedule,
+      ),
+      EstadoReporte.enProceso => (
+        const Color(0xFF1D5FBF),
+        const Color(0xFFE3EDFB),
+        Icons.autorenew,
+      ),
+      EstadoReporte.resuelto => (
+        ColoresApp.verde,
+        ColoresApp.verdeClaro,
+        Icons.check,
+      ),
     };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withAlpha(30),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withAlpha(100)),
+        color: fondo,
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -31,8 +47,8 @@ class ChipEstado extends StatelessWidget {
             estado.etiqueta,
             style: TextStyle(
               color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
