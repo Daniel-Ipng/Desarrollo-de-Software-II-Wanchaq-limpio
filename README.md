@@ -8,10 +8,12 @@ con Supabase Auth, PostgreSQL, Storage y RLS.
 1. Crea un proyecto en Supabase.
 2. Ejecuta [`backend/database/schema_supabase.sql`](backend/database/schema_supabase.sql)
    en el SQL Editor.
-3. En Storage crea un bucket público llamado `reportes`.
-4. Obtén la URL del proyecto y la publishable key desde **Project Settings >
+3. El archivo `schema_supabase.sql` ya incluye las tablas, relaciones y
+   políticas RLS de los módulos ciudadanos, administrativos y operativos.
+4. En Storage crea un bucket público llamado `reportes`.
+5. Obtén la URL del proyecto y la publishable key desde **Project Settings >
    API**.
-5. Inicia la app inyectando la configuración:
+6. Inicia la app inyectando la configuración:
 
 ```bash
 flutter run --dart-define=SUPABASE_URL=https://tvlxdjhbxrqtxxxsprde.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_2XSV3ulWROSJY1YGE-lP0g_FfCrtZ0l
@@ -45,6 +47,25 @@ Estas consultas y cambios dependen de las políticas administrativas del archivo
 Si el panel no muestra reportes, vuelve a ejecutar ese esquema en el proyecto
 Supabase y confirma que el usuario tenga un perfil activo con rol
 `admin` o `administrador`.
+
+## Módulo ciudadano
+
+El inicio ciudadano muestra la fecha actual, el resumen real de sus reportes,
+los estados de cada incidencia, accesos rápidos, avisos cuando faltan datos de
+residencia y un estado ecológico informativo. El perfil permite actualizar los
+datos autorizados, obtener la ubicación con permiso del dispositivo y cambiar
+la contraseña verificando primero la contraseña actual mediante Supabase Auth.
+
+El esquema crea las tablas necesarias para horarios de recolección, camiones,
+rutas, recolecciones, notificaciones, catálogo de residuos y actividad
+ecológica. Los datos operativos deben ser registrados por un administrador u
+operador; el esquema no inventa recorridos, posiciones GPS, recolecciones ni
+puntos históricos.
+
+La función `obtener_resumen_ecologico()` devuelve únicamente el resumen del
+usuario autenticado (o los resúmenes para un administrador autorizado). Las
+recolecciones de zona no se atribuyen automáticamente como aportes personales:
+`ciudadano_id` solo debe utilizarse cuando exista esa relación real.
 
 ## Validación
 

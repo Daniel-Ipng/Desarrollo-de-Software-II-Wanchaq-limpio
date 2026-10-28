@@ -231,6 +231,23 @@ class UsuarioRepository {
     }
   }
 
+  /// Verifica la contraseña actual y establece una nueva mediante Supabase Auth.
+  Future<void> cambiarContrasena({
+    required String actual,
+    required String nueva,
+  }) async {
+    final usuario = _db.auth.currentUser;
+    if (usuario?.email == null) {
+      throw const AuthException('La sesión no está activa');
+    }
+
+    await _db.auth.signInWithPassword(
+      email: usuario!.email!,
+      password: actual,
+    );
+    await _db.auth.updateUser(UserAttributes(password: nueva));
+  }
+
   // ─── Sesión ──────────────────────────────────────────────────────────────────
 
   /// Verifica si hay una sesión persistente activa (manejada automáticamente por Supabase).

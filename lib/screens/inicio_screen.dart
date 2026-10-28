@@ -4,6 +4,7 @@ import '../models/usuario.dart';
 import '../models/reporte.dart';
 import '../repositories/reporte_repository.dart';
 import '../repositories/usuario_repository.dart';
+import '../models/modulos_ciudadanos.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +21,9 @@ class InicioScreen extends StatefulWidget {
   final VoidCallback alIrAReportes;
   final VoidCallback? alIrAMapa;
   final VoidCallback? alIrAPerfil;
+  final VoidCallback? alAbrirHorarios;
+  final VoidCallback? alAbrirCamiones;
+  final VoidCallback? alAbrirRecolecciones;
 
   const InicioScreen({
     super.key,
@@ -30,6 +34,9 @@ class InicioScreen extends StatefulWidget {
     required this.alIrAReportes,
     this.alIrAMapa,
     this.alIrAPerfil,
+    this.alAbrirHorarios,
+    this.alAbrirCamiones,
+    this.alAbrirRecolecciones,
   });
 
   @override
@@ -44,6 +51,7 @@ class _InicioScreenState extends State<InicioScreen> {
   List<Reporte> _recientes = [];
   bool _cargando = true;
   bool _errorCarga = false;
+  ResumenEcologico? _ecologia;
 
   @override
   void initState() {
@@ -58,6 +66,8 @@ class _InicioScreenState extends State<InicioScreen> {
     });
     try {
       final reportes = await widget.repositorioReportes.listar();
+      final ecologia = await widget.repositorioReportes
+          .obtenerResumenEcologico();
       if (mounted) {
         setState(() {
           _totalReportes = reportes.length;
@@ -71,6 +81,7 @@ class _InicioScreenState extends State<InicioScreen> {
               .where((r) => r.estado == EstadoReporte.resuelto)
               .length;
           _recientes = reportes.take(3).toList();
+          _ecologia = ecologia;
           _cargando = false;
           _errorCarga = false;
         });
@@ -129,6 +140,11 @@ class _InicioScreenState extends State<InicioScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                Text(
+                  _fechaActual(),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
                 const Text(
                   'Construyamos juntos un Wanchaq más limpio.',
                   style: TextStyle(color: Colors.white, fontSize: 12),
@@ -140,9 +156,42 @@ class _InicioScreenState extends State<InicioScreen> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _irACrearReporte,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: colores.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text(
+                      'Reportar una incidencia',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+          if (widget.usuario.zonaId == null ||
+              widget.usuario.direccion?.trim().isEmpty != false) ...[
+            const SizedBox(height: 14),
+            Card(
+              color: colores.tertiaryContainer,
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Completa tu información de residencia'),
+                subtitle: const Text(
+                  'Tu zona y dirección ayudan a mostrar información del servicio.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: widget.alIrAPerfil,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
 
           Row(
@@ -189,7 +238,9 @@ class _InicioScreenState extends State<InicioScreen> {
           else
             LayoutBuilder(
               builder: (context, constraints) {
-                final ancho = (constraints.maxWidth - 12) / 2;
+                final ancho = constraints.maxWidth > 620
+                    ? (constraints.maxWidth - 36) / 4
+                    : (constraints.maxWidth - 12) / 2;
                 return Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -274,6 +325,43 @@ class _InicioScreenState extends State<InicioScreen> {
                 ),
               ),
           const SizedBox(height: 24),
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: colores.primaryContainer,
+                child: Icon(Icons.eco_outlined, color: colores.primary),
+              ),
+              title: const Text(
+                'Nivel ecológico',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text(
+                'Consulta tu progreso registrado en el sistema.',
+              ),
+              trailing: _ecologia == null
+                  ? const Text('Sin datos')
+                  : SizedBox(
+                      width: 110,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${_ecologia!.nivel} · ${_ecologia!.puntos} pts',
+                            textAlign: TextAlign.end,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: _progresoEcologico(),
+                            minHeight: 6,
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           const Text(
             'Accesos rápidos',
@@ -319,6 +407,30 @@ class _InicioScreenState extends State<InicioScreen> {
                     Icons.person_outline,
                     widget.alIrAPerfil ?? () {},
                   ),
+                  _acceso(
+                    context,
+                    ancho,
+                    'Horarios',
+                    'Consulta tu zona',
+                    Icons.schedule_outlined,
+                    widget.alAbrirHorarios ?? () {},
+                  ),
+                  _acceso(
+                    context,
+                    ancho,
+                    'Camiones',
+                    'Seguimiento GPS',
+                    Icons.local_shipping_outlined,
+                    widget.alAbrirCamiones ?? () {},
+                  ),
+                  _acceso(
+                    context,
+                    ancho,
+                    'Recolecciones',
+                    'Historial de tu zona',
+                    Icons.recycling_outlined,
+                    widget.alAbrirRecolecciones ?? () {},
+                  ),
                 ],
               );
             },
@@ -348,6 +460,36 @@ class _InicioScreenState extends State<InicioScreen> {
     );
   }
 
+  String _fechaActual() {
+    final ahora = DateTime.now();
+    const meses = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    return '${ahora.day} de ${meses[ahora.month - 1]} de ${ahora.year}';
+  }
+
+  double _progresoEcologico() {
+    final resumen = _ecologia;
+    if (resumen == null) return 0;
+    final maximo = resumen.puntosMaximos;
+    if (maximo == null) return 1;
+    final rango = maximo - resumen.puntosMinimos + 1;
+    return ((resumen.puntos - resumen.puntosMinimos + 1) / rango)
+        .clamp(0, 1)
+        .toDouble();
+  }
+
   Widget _acceso(
     BuildContext context,
     double ancho,
@@ -365,7 +507,7 @@ class _InicioScreenState extends State<InicioScreen> {
         child: InkWell(
           onTap: accion,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

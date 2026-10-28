@@ -10,6 +10,10 @@ import 'screens/reportes_screen.dart';
 import 'screens/perfil_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/mapa_screen.dart';
+import 'screens/notificaciones_screen.dart';
+import 'screens/horarios_screen.dart';
+import 'screens/seguimiento_camiones_screen.dart';
+import 'screens/historial_recolecciones_screen.dart';
 
 /// Configuración pública del proyecto Supabase.
 ///
@@ -123,7 +127,7 @@ class EcoRutasApp extends StatelessWidget {
           color: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -145,6 +149,7 @@ class EcoRutasApp extends StatelessWidget {
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: Colors.white,
           indicatorColor: const Color(0xFFD7F1E5),
+          height: 72,
           labelTextStyle: WidgetStateProperty.all(
             const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
           ),
@@ -360,6 +365,30 @@ class _AppPrincipalState extends State<AppPrincipal> {
         alIrAReportes: () => setState(() => _indice = 1),
         alIrAMapa: () => setState(() => _indice = 2),
         alIrAPerfil: () => setState(() => _indice = 3),
+        alAbrirHorarios: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => HorariosScreen(
+              repositorio: widget.repositorioReportes,
+              zonaId: _usuario.zonaId,
+              zonaNombre: _usuario.zonaNombre,
+            ),
+          ),
+        ),
+        alAbrirCamiones: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => SeguimientoCamionesScreen(
+              repositorio: widget.repositorioReportes,
+            ),
+          ),
+        ),
+        alAbrirRecolecciones: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => HistorialRecoleccionesScreen(
+              repositorio: widget.repositorioReportes,
+              zonaId: _usuario.zonaId,
+            ),
+          ),
+        ),
       ),
       ReportesScreen(
         repositorio: widget.repositorioReportes,
@@ -381,7 +410,7 @@ class _AppPrincipalState extends State<AppPrincipal> {
       appBar: _indice == 1 || _indice == 2
           ? null
           : AppBar(
-              title: const Row(
+              title: Row(
                 children: [
                   Icon(Icons.eco, color: Color(0xFF167D52)),
                   SizedBox(width: 8),
@@ -394,13 +423,16 @@ class _AppPrincipalState extends State<AppPrincipal> {
               actions: [
                 IconButton(
                   tooltip: 'Notificaciones',
-                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Las notificaciones aún no están disponibles.',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => NotificacionesScreen(
+                        repositorio: widget.repositorioReportes,
                       ),
-                      behavior: SnackBarBehavior.floating,
                     ),
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    shape: const CircleBorder(),
                   ),
                   icon: const Icon(Icons.notifications_none_rounded),
                 ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/reporte.dart';
 import '../repositories/reporte_repository.dart';
@@ -200,11 +201,9 @@ class _DetalleReporteScreenState extends State<DetalleReporteScreen> {
                         'Longitud: ${reporte.longitud!.toStringAsFixed(6)}',
                     Icons.my_location,
                   ),
-                  const SizedBox(height: 4),
-                  FilledButton.icon(
-                    onPressed: () => _abrirMapa(context, reporte),
-                    icon: const Icon(Icons.map_outlined),
-                    label: const Text('Abrir ubicación en mapas'),
+                  _mapaReporte(
+                    context,
+                    reporte,
                   ),
                 ] else
                   _campo(
@@ -284,19 +283,67 @@ class _DetalleReporteScreenState extends State<DetalleReporteScreen> {
     );
   }
 
-  Future<void> _abrirMapa(BuildContext context, Reporte reporte) async {
-    final uri = Uri.https('www.google.com', '/maps/search/', {
-      'api': '1',
-      'query': '${reporte.latitud},${reporte.longitud}',
-    });
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
-        context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No se pudo abrir la aplicación de mapas.'),
-        ),
-      );
-    }
+  Widget _mapaReporte(BuildContext context, Reporte reporte) {
+    final colores = Theme.of(context).colorScheme;
+    final punto = LatLng(reporte.latitud!, reporte.longitud!);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 14, 15, 10),
+            child: Row(
+              children: [
+                Icon(Icons.map_outlined, color: colores.primary),
+                const SizedBox(width: 12),
+                const Text(
+                  'Ubicación en el mapa',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 260,
+            child: FlutterMap(
+              options: MapOptions(initialCenter: punto, initialZoom: 16),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.ecorutas.wanchaq',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: punto,
+                      width: 52,
+                      height: 52,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 44,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: Text(
+              'Mapa © OpenStreetMap contributors',
+              style: TextStyle(
+                fontSize: 11,
+                color: colores.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatearFecha(DateTime fecha) {

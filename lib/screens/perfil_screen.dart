@@ -252,6 +252,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   Widget _vistaPerfil(BuildContext context) {
     final usuario = _usuario!;
+    final colores = Theme.of(context).colorScheme;
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -263,35 +264,57 @@ class _PerfilScreenState extends State<PerfilScreen> {
             label: const Text('Editar perfil'),
           ),
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .primaryContainer,
-                  child: Icon(
-                    Icons.person,
-                    size: 38,
-                    color: Theme.of(context).colorScheme.primary,
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colores.primary, const Color(0xFF45A477)],
+            ),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 34,
+                backgroundColor: Colors.white,
+                child: Text(
+                  _iniciales(usuario),
+                  style: TextStyle(
+                    color: colores.primary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  usuario.nombreCompleto,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      usuario.nombreCompleto,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      usuario.correo,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    if (usuario.zonaNombre != null)
+                      Text(
+                        usuario.zonaNombre!,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(usuario.correo),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+        const SizedBox(height: 12),
         _dato('Nombre', usuario.nombres, Icons.person_outline),
         _dato('Apellidos', _opcional(usuario.apellidos), Icons.people_outline),
         _dato('DNI', _opcional(usuario.dni), Icons.badge_outlined),
@@ -319,12 +342,162 @@ class _PerfilScreenState extends State<PerfilScreen> {
           ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
+          onPressed: () => _mostrarCambioContrasena(context),
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Cambiar contraseña'),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           onPressed: widget.alExpirarSesion,
           icon: const Icon(Icons.logout),
           label: const Text('Cerrar sesión'),
         ),
       ],
     );
+  }
+
+  String _iniciales(Usuario usuario) {
+    final partes = usuario.nombreCompleto
+        .split(' ')
+        .where((parte) => parte.isNotEmpty)
+        .toList();
+    if (partes.isEmpty) return '?';
+    if (partes.length == 1) return partes.first[0].toUpperCase();
+    return '${partes.first[0]}${partes.last[0]}'.toUpperCase();
+  }
+
+  Future<void> _mostrarCambioContrasena(BuildContext context) async {
+    final actual = TextEditingController();
+    final nueva = TextEditingController();
+    final confirmacion = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var visible = false;
+    var guardando = false;
+    String? error;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Cambiar contraseña'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: actual,
+                    obscureText: !visible,
+                    decoration: const InputDecoration(
+                      labelText: 'Contraseña actual',
+                    ),
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Ingresa tu contraseña actual'
+                        : null,
+                  ),
+                  TextFormField(
+                    controller: nueva,
+                    obscureText: !visible,
+                    decoration: InputDecoration(
+                      labelText: 'Nueva contraseña',
+                      suffixIcon: IconButton(
+                        onPressed: () =>
+                            setDialogState(() => visible = !visible),
+                        icon: Icon(
+                          visible ? Icons.visibility_off : Icons.visibility,
+                        ),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.length < 8) {
+                        return 'Usa al menos 8 caracteres';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    controller: confirmacion,
+                    obscureText: !visible,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirmar nueva contraseña',
+                    ),
+                    validator: (value) => value != nueva.text
+                        ? 'Las contraseñas no coinciden'
+                        : null,
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: guardando
+                  ? null
+                  : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: guardando
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        guardando = true;
+                        error = null;
+                      });
+                      try {
+                        await widget.repositorio.cambiarContrasena(
+                          actual: actual.text,
+                          nueva: nueva.text,
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.of(dialogContext).pop();
+                        }
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Contraseña actualizada.'),
+                          ),
+                        );
+                      } on AuthException catch (exception) {
+                        setDialogState(() {
+                          guardando = false;
+                          error = exception.message.contains('Invalid')
+                              ? 'La contraseña actual no es correcta.'
+                              : 'No se pudo actualizar la contraseña.';
+                        });
+                      } catch (_) {
+                        setDialogState(() {
+                          guardando = false;
+                          error = 'No se pudo actualizar la contraseña.';
+                        });
+                      }
+                    },
+              child: guardando
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    actual.dispose();
+    nueva.dispose();
+    confirmacion.dispose();
   }
 
   Widget _formularioEdicion(BuildContext context) {

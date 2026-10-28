@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/reporte.dart';
 import '../models/zona.dart';
+import '../models/modulos_ciudadanos.dart';
 import '../services/supabase_service.dart';
 
 /// Resultado de una operación sobre reportes.
@@ -186,5 +187,94 @@ class ReporteRepository {
         .single();
 
     return Reporte.fromSupabaseJson(datos);
+  }
+
+  Future<List<HorarioRecoleccion>> listarHorarios(int zonaId) async {
+    final datos = await _db
+        .from('horarios_recoleccion')
+        .select()
+        .eq('zona_id', zonaId)
+        .eq('activo', true)
+        .order('dia_semana')
+        .order('hora_inicio');
+    return (datos as List)
+        .whereType<Map<String, dynamic>>()
+        .map(HorarioRecoleccion.fromJson)
+        .toList();
+  }
+
+  Future<List<Camion>> listarCamiones() async {
+    final datos = await _db
+        .from('camiones')
+        .select(
+          'id, placa, modelo, estado, latitud, longitud, '
+          'ultima_ubicacion_en, zona_id',
+        )
+        .eq('activo', true)
+        .order('placa');
+    return (datos as List)
+        .whereType<Map<String, dynamic>>()
+        .map(Camion.fromJson)
+        .toList();
+  }
+
+  Future<List<Recoleccion>> listarRecoleccionesPropias({
+    required int zonaId,
+    DateTime? desde,
+    DateTime? hasta,
+  }) async {
+    final base = _db
+        .from('recolecciones')
+        .select()
+        .eq('zona_id', zonaId);
+    final datos = desde != null && hasta != null
+        ? await base
+              .gte('recolectado_en', desde.toIso8601String())
+              .lte('recolectado_en', hasta.toIso8601String())
+              .order('recolectado_en', ascending: false)
+        : desde != null
+        ? await base
+              .gte('recolectado_en', desde.toIso8601String())
+              .order('recolectado_en', ascending: false)
+        : hasta != null
+        ? await base
+              .lte('recolectado_en', hasta.toIso8601String())
+              .order('recolectado_en', ascending: false)
+        : await base.order('recolectado_en', ascending: false);
+    return (datos as List)
+        .whereType<Map<String, dynamic>>()
+        .map(Recoleccion.fromJson)
+        .toList();
+  }
+
+  Future<List<Notificacion>> listarNotificaciones() async {
+    final datos = await _db
+        .from('notificaciones')
+        .select()
+        .order('creado_en', ascending: false);
+    return (datos as List)
+        .whereType<Map<String, dynamic>>()
+        .map(Notificacion.fromJson)
+        .toList();
+  }
+
+  Future<void> marcarNotificacionLeida(int id) async {
+    await _db
+        .from('notificaciones')
+        .update({'leida': true, 'leida_en': DateTime.now().toIso8601String()})
+        .eq('id', id);
+  }
+
+  Future<void> marcarTodasNotificacionesLeidas() async {
+    await _db
+        .from('notificaciones')
+        .update({'leida': true, 'leida_en': DateTime.now().toIso8601String()})
+        .eq('leida', false);
+  }
+
+  Future<ResumenEcologico?> obtenerResumenEcologico() async {
+    final datos = await _db.rpc('obtener_resumen_ecologico');
+    final filas = (datos as List).whereType<Map<String, dynamic>>().toList();
+    return filas.isEmpty ? null : ResumenEcologico.fromJson(filas.first);
   }
 }

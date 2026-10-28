@@ -64,13 +64,20 @@ class _ReportesScreenState extends State<ReportesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis reportes')),
+      appBar: AppBar(
+        title: const Text(
+          'Mis reportes',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: RefreshIndicator(onRefresh: _cargar, child: _construirCuerpo()),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _irACrear,
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo reporte'),
+        label: const Text('Reportar'),
+        backgroundColor: colores.primary,
       ),
     );
   }
@@ -188,6 +195,13 @@ class _ReportesScreenState extends State<ReportesScreen> {
       child: ChoiceChip(
         label: Text(texto),
         selected: seleccionado,
+        selectedColor: Theme.of(context).colorScheme.primary,
+        labelStyle: TextStyle(
+          color: seleccionado
+              ? Colors.white
+              : Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
         onSelected: (_) => setState(() => _filtro = estado),
       ),
     );

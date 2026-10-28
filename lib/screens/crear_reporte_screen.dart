@@ -222,7 +222,13 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   Widget build(BuildContext context) {
     final colores = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo reporte'), centerTitle: false),
+      appBar: AppBar(
+        title: const Text(
+          'Nuevo reporte',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: false,
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -367,7 +373,12 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
         key: key,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('¿Qué problema deseas reportar?'),
+          Text(
+            '¿Qué está pasando?',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 14),
           ...TipoIncidencia.values.map((tipo) {
             final seleccionado = _tipo == tipo;
