@@ -64,8 +64,8 @@ class UsuarioRepository {
         'rol': 'ciudadano',
         if (telefono != null && telefono.trim().isNotEmpty)
           'telefono': telefono.trim(),
-        'latitud_domicilio': ?latitudDomicilio,
-        'longitud_domicilio': ?longitudDomicilio,
+        'latitud_domicilio': latitudDomicilio,
+        'longitud_domicilio': longitudDomicilio,
       };
 
       await _db.from('perfiles').insert(perfilData);
@@ -126,6 +126,29 @@ class UsuarioRepository {
     } catch (_) {
       return const ResultadoAuth.fallido(
         'No se pudo conectar con el servidor. Verifica tu conexión.',
+      );
+    }
+  }
+
+  // ─── Recuperación de contraseña ─────────────────────────────────────────────
+
+  /// Envía un enlace para restablecer la contraseña del usuario.
+  Future<ResultadoAuth> recuperarContrasena(String correo) async {
+    final correoLimpio = correo.trim();
+    if (correoLimpio.isEmpty) {
+      return const ResultadoAuth.fallido(
+        'Ingresa un correo electrónico válido.',
+      );
+    }
+
+    try {
+      await _db.auth.resetPasswordForEmail(correoLimpio);
+      return const ResultadoAuth.exitoso(null);
+    } on AuthException catch (e) {
+      return ResultadoAuth.fallido(_traducirErrorAuth(e.message));
+    } catch (_) {
+      return const ResultadoAuth.fallido(
+        'No se pudo enviar el enlace de recuperación. Intenta nuevamente.',
       );
     }
   }

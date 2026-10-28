@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+
 import '../repositories/usuario_repository.dart';
-import '../widgets/campo_texto.dart';
+import '../theme/colores_app.dart';
+import '../utils/validadores.dart';
 import '../widgets/boton_primario.dart';
+import '../widgets/campo_texto.dart';
 import 'registro_screen.dart';
 
 /// Pantalla de inicio de sesión.
 ///
-/// Comunica con [UsuarioRepository] para autenticar al ciudadano y
-/// navega a [InicioScreen] en caso de éxito.
+/// Autentica con [UsuarioRepository] y avisa con [alIniciarSesion] al tener éxito.
 class LoginScreen extends StatefulWidget {
   final UsuarioRepository repositorio;
   final VoidCallback alIniciarSesion;
@@ -28,7 +30,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _contrasenaCtrl = TextEditingController();
 
   bool _cargando = false;
-  bool _verContrasena = false;
   String? _errorGlobal;
 
   @override
@@ -63,167 +64,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colores = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      backgroundColor: colores.surface,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // ─── Encabezado ──────────────────────────────────────────────
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: colores.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.eco,
-                    size: 40,
-                    color: colores.primary,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'EcoRutas Wanchaq',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colores.primary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Inicia sesión para continuar',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: colores.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 36),
-
-                // ─── Formulario ───────────────────────────────────────────────
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      CampoTexto(
-                        controlador: _correoCtrl,
-                        etiqueta: 'Correo electrónico',
-                        icono: Icons.email_outlined,
-                        tipoTeclado: TextInputType.emailAddress,
-                        validador: _validarCorreo,
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _contrasenaCtrl,
-                        obscureText: !_verContrasena,
-                        validator: _validarContrasena,
-                        decoration: InputDecoration(
-                          labelText: 'Contraseña',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _verContrasena
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                            ),
-                            onPressed: () {
-                              setState(
-                                () => _verContrasena = !_verContrasena,
-                              );
-                            },
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colores.outline.withAlpha(100),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                              color: colores.primary,
-                              width: 2,
-                            ),
-                          ),
-                          filled: true,
-                          fillColor: colores.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // ─── Mensaje de error global ───────────────────────────
-                      if (_errorGlobal != null)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colores.errorContainer,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                color: colores.error,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _errorGlobal!,
-                                  style: TextStyle(color: colores.error),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 24),
-                      BotonPrimario(
-                        etiqueta: 'Iniciar sesión',
-                        alPresionar: _iniciarSesion,
-                        cargando: _cargando,
-                        icono: Icons.login,
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ─── Enlace a registro ────────────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '¿No tienes cuenta? ',
-                            style: TextStyle(color: colores.onSurfaceVariant),
-                          ),
-                          TextButton(
-                            onPressed: _irARegistro,
-                            child: const Text('Regístrate'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+  Future<void> _abrirRecuperacion() async {
+    final enviado = await showDialog<bool>(
+      context: context,
+      builder: (_) => _DialogoRecuperarContrasena(
+        repositorio: widget.repositorio,
+        correoInicial: _correoCtrl.text.trim(),
       ),
     );
+    if (enviado == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Te enviamos un enlace para restablecer tu contraseña.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _irARegistro() {
@@ -237,22 +93,324 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ─── Validaciones ─────────────────────────────────────────────────────────
-
-  String? _validarCorreo(String? valor) {
-    if (valor == null || valor.trim().isEmpty) {
-      return 'Ingresa tu correo electrónico';
-    }
-    final expresion = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.]+$');
-    if (!expresion.hasMatch(valor.trim())) {
-      return 'Ingresa un correo válido';
-    }
-    return null;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: ColoresApp.verde,
+      body: SafeArea(
+        bottom: false,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440),
+            child: CustomScrollView(
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(
+                    children: [
+                      const _EncabezadoLogin(),
+                      Expanded(child: _tarjetaFormulario()),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  String? _validarContrasena(String? valor) {
-    if (valor == null || valor.isEmpty) return 'Ingresa tu contraseña';
-    if (valor.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
-    return null;
+  Widget _tarjetaFormulario() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      child: AutofillGroup(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Inicia sesión',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: ColoresApp.tinta,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Ingresa con tu correo y contraseña',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: ColoresApp.textoSecundario,
+                ),
+              ),
+              const SizedBox(height: 20),
+              CampoTexto(
+                controlador: _correoCtrl,
+                etiqueta: 'Correo electrónico',
+                pista: 'tucorreo@gmail.com',
+                tipoTeclado: TextInputType.emailAddress,
+                accionTeclado: TextInputAction.next,
+                pistasAutocompletado: const [AutofillHints.email],
+                validador: validarCorreo,
+              ),
+              const SizedBox(height: 16),
+              CampoTexto(
+                controlador: _contrasenaCtrl,
+                etiqueta: 'Contraseña',
+                pista: 'Tu contraseña',
+                esContrasena: true,
+                accionTeclado: TextInputAction.done,
+                pistasAutocompletado: const [AutofillHints.password],
+                alEnviar: (_) => _iniciarSesion(),
+                validador: validarContrasenaDeInicio,
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _abrirRecuperacion,
+                  style: TextButton.styleFrom(
+                    foregroundColor: ColoresApp.verde,
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('¿Olvidaste tu contraseña?'),
+                ),
+              ),
+              if (_errorGlobal != null) ...[
+                _AvisoError(mensaje: _errorGlobal!),
+                const SizedBox(height: 12),
+              ],
+              const SizedBox(height: 4),
+              BotonPrimario(
+                etiqueta: 'Iniciar sesión',
+                alPresionar: _iniciarSesion,
+                cargando: _cargando,
+              ),
+              const SizedBox(height: 22),
+              const _SeparadorConTexto(texto: '¿Aún no tienes cuenta?'),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 52,
+                child: OutlinedButton(
+                  onPressed: _irARegistro,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ColoresApp.verde,
+                    side: const BorderSide(color: ColoresApp.verde, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Crear cuenta ciudadana'),
+                ),
+              ),
+              const SizedBox(height: 28),
+              const Text(
+                'Municipalidad Distrital de Wanchaq',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: ColoresApp.textoSecundario),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EncabezadoLogin extends StatelessWidget {
+  const _EncabezadoLogin();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(24, 36, 24, 30),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 38,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.eco, size: 40, color: ColoresApp.verde),
+          ),
+          SizedBox(height: 14),
+          Text(
+            'EcoRutas Wanchaq',
+            style: TextStyle(
+              fontSize: 27,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Recolección de residuos en tu distrito',
+            style: TextStyle(fontSize: 14, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvisoError extends StatelessWidget {
+  final String mensaje;
+  const _AvisoError({required this.mensaje});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ColoresApp.errorFondo,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: ColoresApp.errorTexto, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              mensaje,
+              style: const TextStyle(color: ColoresApp.errorTexto),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SeparadorConTexto extends StatelessWidget {
+  final String texto;
+  const _SeparadorConTexto({required this.texto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Expanded(child: Divider(color: ColoresApp.divisor)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            texto,
+            style: const TextStyle(
+              fontSize: 13,
+              color: ColoresApp.textoSecundario,
+            ),
+          ),
+        ),
+        const Expanded(child: Divider(color: ColoresApp.divisor)),
+      ],
+    );
+  }
+}
+
+/// Diálogo para pedir el enlace de restablecimiento de contraseña.
+class _DialogoRecuperarContrasena extends StatefulWidget {
+  final UsuarioRepository repositorio;
+  final String correoInicial;
+
+  const _DialogoRecuperarContrasena({
+    required this.repositorio,
+    required this.correoInicial,
+  });
+
+  @override
+  State<_DialogoRecuperarContrasena> createState() =>
+      _DialogoRecuperarContrasenaState();
+}
+
+class _DialogoRecuperarContrasenaState
+    extends State<_DialogoRecuperarContrasena> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _correoCtrl = TextEditingController(
+    text: widget.correoInicial,
+  );
+  bool _enviando = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _correoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _enviar() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+
+    final resultado = await widget.repositorio.recuperarContrasena(
+      _correoCtrl.text,
+    );
+    if (!mounted) return;
+
+    if (resultado.exito) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _enviando = false;
+        _error = resultado.error;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Recuperar contraseña'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Escribe tu correo y te enviaremos un enlace para restablecerla.',
+            ),
+            const SizedBox(height: 16),
+            CampoTexto(
+              controlador: _correoCtrl,
+              etiqueta: 'Correo electrónico',
+              pista: 'tucorreo@gmail.com',
+              tipoTeclado: TextInputType.emailAddress,
+              accionTeclado: TextInputAction.done,
+              alEnviar: (_) => _enviar(),
+              validador: validarCorreo,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(_error!, style: const TextStyle(color: ColoresApp.error)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _enviando ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _enviando ? null : _enviar,
+          child: Text(_enviando ? 'Enviando...' : 'Enviar enlace'),
+        ),
+      ],
+    );
   }
 }

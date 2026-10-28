@@ -44,7 +44,7 @@ class _RegistroRepository extends UsuarioRepository {
 }
 
 void main() {
-  testWidgets('confirma registro solo desde el resumen y usa zona cargada', (
+  testWidgets('registro en 3 pasos: exige aceptar la política y usa la zona elegida', (
     tester,
   ) async {
     final repositorio = _RegistroRepository();
@@ -59,35 +59,41 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Paso 1 de 4'), findsOneWidget);
-    expect(repositorio.llamadasRegistro, 0);
+    // Paso 1: datos (orden: nombres, apellidos, DNI, teléfono, correo, clave, confirmar)
     final campos = find.byType(TextFormField);
     await tester.enterText(campos.at(0), 'Ciudadana');
     await tester.enterText(campos.at(1), 'Prueba');
     await tester.enterText(campos.at(2), '12345678');
-    await tester.enterText(campos.at(3), 'ciudadana@example.test');
-    await tester.enterText(campos.at(4), '');
+    await tester.enterText(campos.at(3), '');
+    await tester.enterText(campos.at(4), 'ciudadana@example.test');
     await tester.enterText(campos.at(5), 'clave-segura');
     await tester.enterText(campos.at(6), 'clave-segura');
     await tester.tap(find.text('Continuar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Paso 2 de 4'), findsOneWidget);
-    expect(find.text('Zona verificada'), findsOneWidget);
+    // Paso 2: domicilio. La zona NO viene preseleccionada.
+    await tester.tap(find.text('Continuar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecciona tu zona.'), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButtonFormField<Zona>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Zona verificada').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField), 'Referencia del domicilio');
     await tester.tap(find.text('Continuar'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Paso 3 de 4'), findsOneWidget);
-    await tester.enterText(
-      find.byType(TextFormField),
-      'Referencia del domicilio',
-    );
-    await tester.tap(find.text('Continuar'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Paso 4 de 4'), findsOneWidget);
+    // Paso 3: revisión. Sin aceptar la política no se registra.
+    expect(find.text('Confirmar registro'), findsOneWidget);
     expect(find.text('clave-segura'), findsNothing);
+    await tester.tap(find.text('Confirmar registro'));
+    await tester.pumpAndSettle();
     expect(repositorio.llamadasRegistro, 0);
+
+    await tester.ensureVisible(find.byType(CheckboxListTile));
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Confirmar registro'));
     await tester.pumpAndSettle();
 
