@@ -1,112 +1,258 @@
 import 'package:flutter/material.dart';
-
-import '../api.dart';
-import '../utils.dart';
+import '../repositories/usuario_repository.dart';
+import '../widgets/campo_texto.dart';
+import '../widgets/boton_primario.dart';
 import 'registro_screen.dart';
 
+/// Pantalla de inicio de sesión.
+///
+/// Comunica con [UsuarioRepository] para autenticar al ciudadano y
+/// navega a [InicioScreen] en caso de éxito.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final UsuarioRepository repositorio;
+  final VoidCallback alIniciarSesion;
+
+  const LoginScreen({
+    super.key,
+    required this.repositorio,
+    required this.alIniciarSesion,
+  });
+
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _form = GlobalKey<FormState>();
-  final _id = TextEditingController();
-  final _pass = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _correoCtrl = TextEditingController();
+  final _contrasenaCtrl = TextEditingController();
+
   bool _cargando = false;
-  bool _ver = false;
+  bool _verContrasena = false;
+  String? _errorGlobal;
 
   @override
   void dispose() {
-    _id.dispose();
-    _pass.dispose();
+    _correoCtrl.dispose();
+    _contrasenaCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _entrar() async {
-    if (!_form.currentState!.validate()) return;
-    setState(() => _cargando = true);
-    try {
-      await Api.login(_id.text, _pass.text);
-    } on ApiException catch (e) {
-      if (mounted) mensaje(context, e.message);
-    } finally {
-      if (mounted) setState(() => _cargando = false);
+  Future<void> _iniciarSesion() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _cargando = true;
+      _errorGlobal = null;
+    });
+
+    final resultado = await widget.repositorio.iniciarSesion(
+      correo: _correoCtrl.text.trim(),
+      contrasena: _contrasenaCtrl.text,
+    );
+
+    if (!mounted) return;
+
+    if (resultado.exito) {
+      widget.alIniciarSesion();
+    } else {
+      setState(() {
+        _cargando = false;
+        _errorGlobal = resultado.error;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
+    final colores = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: colores.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Form(
-                key: _form,
-                child: Column(children: [
-                  Icon(Icons.recycling, size: 72, color: color),
-                  const SizedBox(height: 8),
-                  Text('EcoRutas Wanchaq',
-                      style: Theme.of(context).textTheme.headlineSmall),
-                  const Text('Municipalidad Distrital de Wanchaq'),
-                  const SizedBox(height: 28),
-                  TextFormField(
-                    controller: _id,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Correo o DNI',
-                      prefixIcon: Icon(Icons.person_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Ingresa tu correo o DNI.' : null,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // ─── Encabezado ──────────────────────────────────────────────
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: colores.primaryContainer,
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _pass,
-                    obscureText: !_ver,
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: Icon(_ver ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _ver = !_ver),
+                  child: Icon(
+                    Icons.eco,
+                    size: 40,
+                    color: colores.primary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'EcoRutas Wanchaq',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colores.primary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Inicia sesión para continuar',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colores.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 36),
+
+                // ─── Formulario ───────────────────────────────────────────────
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      CampoTexto(
+                        controlador: _correoCtrl,
+                        etiqueta: 'Correo electrónico',
+                        icono: Icons.email_outlined,
+                        tipoTeclado: TextInputType.emailAddress,
+                        validador: _validarCorreo,
                       ),
-                    ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Ingresa tu contraseña.' : null,
-                    onFieldSubmitted: (_) => _entrar(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _contrasenaCtrl,
+                        obscureText: !_verContrasena,
+                        validator: _validarContrasena,
+                        decoration: InputDecoration(
+                          labelText: 'Contraseña',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _verContrasena
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () {
+                              setState(
+                                () => _verContrasena = !_verContrasena,
+                              );
+                            },
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colores.outline.withAlpha(100),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colores.primary,
+                              width: 2,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor: colores.surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // ─── Mensaje de error global ───────────────────────────
+                      if (_errorGlobal != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: colores.errorContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: colores.error,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _errorGlobal!,
+                                  style: TextStyle(color: colores.error),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 24),
+                      BotonPrimario(
+                        etiqueta: 'Iniciar sesión',
+                        alPresionar: _iniciarSesion,
+                        cargando: _cargando,
+                        icono: Icons.login,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // ─── Enlace a registro ────────────────────────────────
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '¿No tienes cuenta? ',
+                            style: TextStyle(color: colores.onSurfaceVariant),
+                          ),
+                          TextButton(
+                            onPressed: _irARegistro,
+                            child: const Text('Regístrate'),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _cargando ? null : _entrar,
-                      child: _cargando
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Ingresar'),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context)
-                        .push(MaterialPageRoute(builder: (_) => const RegistroScreen())),
-                    child: const Text('¿Eres vecino de Wanchaq? Regístrate'),
-                  ),
-                ]),
-              ),
+                ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _irARegistro() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RegistroScreen(
+          repositorio: widget.repositorio,
+          alRegistrarse: widget.alIniciarSesion,
+        ),
+      ),
+    );
+  }
+
+  // ─── Validaciones ─────────────────────────────────────────────────────────
+
+  String? _validarCorreo(String? valor) {
+    if (valor == null || valor.trim().isEmpty) {
+      return 'Ingresa tu correo electrónico';
+    }
+    final expresion = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.]+$');
+    if (!expresion.hasMatch(valor.trim())) {
+      return 'Ingresa un correo válido';
+    }
+    return null;
+  }
+
+  String? _validarContrasena(String? valor) {
+    if (valor == null || valor.isEmpty) return 'Ingresa tu contraseña';
+    if (valor.length < 6) return 'La contraseña debe tener al menos 6 caracteres';
+    return null;
   }
 }

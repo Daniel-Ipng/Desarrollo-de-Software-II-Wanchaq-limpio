@@ -1,37 +1,46 @@
-# EcoRutas Wanchaq — App ciudadana (MVP en Flutter)
+# EcoRutas Wanchaq
 
-Consume el mismo backend Node/Express del proyecto web (`/api`).
+Aplicación Flutter para registrar incidencias de residuos y consultar su estado
+con Supabase Auth, PostgreSQL, Storage y RLS.
 
-## Pasos
+## Plataformas
 
-1. Crea el proyecto base y copia esta carpeta `lib/` y el `pubspec.yaml` encima:
-   ```
-   flutter create ecocusco_app
-   ```
-   (usa `com.example.ecocusco_app` como nombre de paquete, o cambia `userAgentPackageName` en `mapa_screen.dart`).
-2. `flutter pub get`
-3. En `android/app/src/main/AndroidManifest.xml`, antes de `<application>`:
-   ```xml
-   <uses-permission android:name="android.permission.INTERNET"/>
-   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-   ```
-4. Ejecuta con el backend de Render (por defecto):
-   ```
-   flutter run
-   ```
-   o con tu backend local (celular y PC en la misma red Wi-Fi):
-   ```
-   flutter run --dart-define=API_BASE=http://IP_DE_TU_PC:4000/api
-   ```
-   Para `http://` (sin HTTPS) agrega `android:usesCleartextTraffic="true"` en la etiqueta `<application>`.
+El proyecto está preparado principalmente para Android y navegador web. Las
+Las carpetas de iOS, Linux, macOS y Windows de escritorio se retiraron para
+reducir el tamaño del proyecto. La aplicación web se ejecuta desde el navegador
+en Windows sin necesitar la plataforma Windows de escritorio.
 
-## Cuenta de prueba (datos semilla)
+## Configuración de Supabase
 
-Ciudadano: `mario.ccahuana@gmail.com` / `Vecino2024`
+1. Crea un proyecto en Supabase.
+2. Ejecuta [`backend/database/schema_supabase.sql`](backend/database/schema_supabase.sql)
+   en el SQL Editor.
+3. En Storage crea un bucket público llamado `reportes`.
+4. Obtén la URL del proyecto y la publishable key desde **Project Settings >
+   API**.
+5. Inicia la app inyectando la configuración:
 
-## Notas
+```bash
+flutter run --dart-define=SUPABASE_URL=https://tvlxdjhbxrqtxxxsprde.supabase.co --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_2XSV3ulWROSJY1YGE-lP0g_FfCrtZ0l
+```
 
-- La primera petición a Render puede tardar ~30 s (el plan gratuito se "duerme").
-- Operadores y admins usan 2FA por correo: en el MVP la app es solo para ciudadanos.
-- El mapa usa OpenStreetMap (sin API key), igual que la versión web con Leaflet.
+`SUPABASE_URL` debe ser la URL API, por ejemplo
+`https://abcdefghijklmnop.supabase.co`. No uses la URL del Dashboard, una URL
+que termine en `/rest/v1`, ni la URL de Auth.
+
+La clave incluida arriba es la **publishable key** del cliente Flutter. No
+reemplaces ese valor por una clave `service_role`, `secret` o cualquier otra
+clave privada.
+
+La aplicación muestra una pantalla de configuración faltante si alguna variable
+no fue proporcionada. Nunca sustituyas la publishable key por una
+`service_role` key.
+
+## Validación
+
+```bash
+flutter analyze
+flutter test
+cd backend
+npm test
+```
