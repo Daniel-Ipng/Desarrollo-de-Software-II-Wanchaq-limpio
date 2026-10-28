@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/zona.dart';
 import '../repositories/usuario_repository.dart';
@@ -42,6 +44,9 @@ class _RegistroScreenState extends State<RegistroScreen> {
   String? _error;
   String? _errorZonas;
   String? _mensajeUbicacion;
+  final _mapController = MapController();
+
+  static const _ubicacionWanchaq = LatLng(-13.53195, -71.96746);
 
   @override
   void initState() {
@@ -121,6 +126,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         _longitud = posicion.longitude;
         _mensajeUbicacion = 'Ubicación actual obtenida del dispositivo.';
       });
+      _mapController.move(LatLng(posicion.latitude, posicion.longitude), 16);
     } on _UbicacionError catch (error) {
       if (mounted) setState(() => _mensajeUbicacion = error.mensaje);
     } catch (_) {
@@ -183,6 +189,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
     if (!mounted) return;
     if (resultado.exito) {
       setState(() => _cargando = false);
+      Navigator.of(context).pop();
       widget.alRegistrarse();
     } else {
       setState(() {
@@ -504,8 +511,73 @@ class _RegistroScreenState extends State<RegistroScreen> {
         Theme.of(context).colorScheme.surfaceContainerHighest,
         Theme.of(context).colorScheme.onSurface,
       ),
+      const SizedBox(height: 12),
+      Text(
+        'Selecciona tu ubicación en el mapa',
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 6),
+      const Text(
+        'Toca el mapa para marcar tu domicilio. También puedes usar el GPS '
+        'o escribir una referencia.',
+      ),
+      const SizedBox(height: 10),
+      SizedBox(
+        height: 280,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _coordenadasSeleccionadas ?? _ubicacionWanchaq,
+              initialZoom: _coordenadasSeleccionadas == null ? 13 : 16,
+              onTap: (_, punto) {
+                setState(() {
+                  _latitud = punto.latitude;
+                  _longitud = punto.longitude;
+                  _mensajeUbicacion =
+                      'Ubicación seleccionada manualmente en el mapa.';
+                });
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.mi_app',
+              ),
+              if (_coordenadasSeleccionadas != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _coordenadasSeleccionadas!,
+                      width: 48,
+                      height: 48,
+                      child: const Icon(
+                        Icons.location_pin,
+                        color: Colors.red,
+                        size: 44,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 4),
+      const Text(
+        'Mapa © OpenStreetMap contributors',
+        style: TextStyle(fontSize: 12, color: Colors.black54),
+      ),
     ],
   );
+
+  LatLng? get _coordenadasSeleccionadas {
+    if (_latitud == null || _longitud == null) return null;
+    return LatLng(_latitud!, _longitud!);
+  }
 
   Widget _resumen(BuildContext context, Key key) {
     final colores = Theme.of(context).colorScheme;

@@ -4,13 +4,12 @@ import 'package:mi_app/models/usuario.dart';
 import 'package:mi_app/models/zona.dart';
 import 'package:mi_app/repositories/usuario_repository.dart';
 import 'package:mi_app/screens/registro_screen.dart';
-import 'package:mi_app/services/api_service.dart';
 
 class _RegistroRepository extends UsuarioRepository {
   int llamadasRegistro = 0;
   int? zonaRecibida;
 
-  _RegistroRepository() : super(ApiService());
+  _RegistroRepository();
 
   @override
   Future<List<Zona>> listarZonasActivas() async => const [
@@ -34,7 +33,7 @@ class _RegistroRepository extends UsuarioRepository {
     zonaRecibida = zonaId;
     return const ResultadoAuth.exitoso(
       Usuario(
-        id: 5,
+        id: '5',
         nombres: 'Ciudadana',
         apellidos: 'Prueba',
         dni: '12345678',
