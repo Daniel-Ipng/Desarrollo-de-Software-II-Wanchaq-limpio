@@ -97,8 +97,7 @@ class _MapaScreenState extends State<MapaScreen> {
                         const Expanded(
                           child: Text(
                             'Las ubicaciones GPS de tus reportes aparecen aquí. '
-                            'No hay un proveedor de mapas embebido configurado; '
-                            'puedes abrir coordenadas válidas en tu aplicación de mapas.',
+                            'Puedes abrir cada coordenada en tu aplicación de mapas.',
                           ),
                         ),
                       ],

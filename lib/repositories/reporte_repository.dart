@@ -146,6 +146,34 @@ class ReporteRepository {
         .toList();
   }
 
+  /// Obtiene todos los reportes visibles para un administrador.
+  Future<List<Reporte>> listarTodosParaAdministrador() async {
+    final datos = await _db
+        .from('reportes')
+        .select()
+        .order('creado_en', ascending: false);
+
+    return (datos as List)
+        .whereType<Map<String, dynamic>>()
+        .map(Reporte.fromSupabaseJson)
+        .toList();
+  }
+
+  /// Actualiza el estado de un reporte desde el panel administrativo.
+  Future<Reporte> actualizarEstadoAdministrador({
+    required int id,
+    required EstadoReporte estado,
+  }) async {
+    final datos = await _db
+        .from('reportes')
+        .update({'estado': estado.name})
+        .eq('id', id)
+        .select()
+        .single();
+
+    return Reporte.fromSupabaseJson(datos);
+  }
+
   // ─── Detalle ─────────────────────────────────────────────────────────────────
 
   /// Obtiene el detalle de un reporte por su [id].

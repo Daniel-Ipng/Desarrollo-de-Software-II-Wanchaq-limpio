@@ -513,7 +513,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
           ),
         const SizedBox(height: 4),
         _mensaje(
-          'No hay un proveedor de mapas configurado en este proyecto. Las coordenadas GPS se guardarán como datos, sin mostrar un mapa embebido.',
+          'La ubicación GPS se guardará junto con el reporte. El administrador podrá revisar las incidencias ubicadas en el mapa.',
           colores.surfaceContainerHighest,
           colores.onSurfaceVariant,
           Icons.map_outlined,

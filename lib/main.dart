@@ -304,6 +304,7 @@ class _PantallaRaizState extends State<PantallaRaiz> {
       return AdminDashboardScreen(
         usuario: _usuario!,
         repositorio: widget.usuarioRepo,
+        reportesRepositorio: widget.reporteRepo,
         alCerrarSesion: _cerrarSesion,
       );
     }

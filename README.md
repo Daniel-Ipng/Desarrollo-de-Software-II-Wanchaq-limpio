@@ -29,6 +29,23 @@ La aplicación muestra una pantalla de configuración faltante si alguna variabl
 no fue proporcionada. Nunca sustituyas la publishable key por una
 `service_role` key.
 
+## Panel administrativo
+
+Las cuentas con rol `admin` o `administrador` acceden automáticamente al panel
+administrativo después de iniciar sesión. El panel permite:
+
+- consultar indicadores de incidencias pendientes, en proceso y resueltas;
+- filtrar incidencias por estado y actualizar su estado;
+- visualizar en un mapa OpenStreetMap las incidencias que tienen coordenadas
+  GPS;
+- actualizar los datos con el botón de refresco o deslizando la pantalla.
+
+Estas consultas y cambios dependen de las políticas administrativas del archivo
+[`backend/database/schema_supabase.sql`](backend/database/schema_supabase.sql).
+Si el panel no muestra reportes, vuelve a ejecutar ese esquema en el proyecto
+Supabase y confirma que el usuario tenga un perfil activo con rol
+`admin` o `administrador`.
+
 ## Validación
 
 ```bash
