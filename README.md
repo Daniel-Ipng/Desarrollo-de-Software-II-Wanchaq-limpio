@@ -3,13 +3,6 @@
 Aplicación Flutter para registrar incidencias de residuos y consultar su estado
 con Supabase Auth, PostgreSQL, Storage y RLS.
 
-## Plataformas
-
-El proyecto está preparado principalmente para Android y navegador web. Las
-Las carpetas de iOS, Linux, macOS y Windows de escritorio se retiraron para
-reducir el tamaño del proyecto. La aplicación web se ejecuta desde el navegador
-en Windows sin necesitar la plataforma Windows de escritorio.
-
 ## Configuración de Supabase
 
 1. Crea un proyecto en Supabase.
