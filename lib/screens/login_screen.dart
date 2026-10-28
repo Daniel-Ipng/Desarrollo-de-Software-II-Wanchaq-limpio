@@ -124,6 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _contrasenaCtrl,
                         obscureText: !_verContrasena,
                         validator: _validarContrasena,
+                        autovalidateMode: AutovalidateMode.onUserInteraction,
                         decoration: InputDecoration(
                           labelText: 'Contraseña',
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -152,6 +153,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
                               color: colores.primary,
+                              width: 2,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: colores.error),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colores.error,
                               width: 2,
                             ),
                           ),

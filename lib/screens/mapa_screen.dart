@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/reporte.dart';
@@ -21,6 +23,7 @@ class MapaScreen extends StatefulWidget {
 }
 
 class _MapaScreenState extends State<MapaScreen> {
+  final MapController _mapController = MapController();
   List<Reporte> _reportes = [];
   bool _cargando = true;
   String? _error;
@@ -96,14 +99,57 @@ class _MapaScreenState extends State<MapaScreen> {
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Text(
-                            'Las ubicaciones GPS de tus reportes aparecen aquí. '
-                            'No hay un proveedor de mapas embebido configurado; '
-                            'puedes abrir coordenadas válidas en tu aplicación de mapas.',
+                            'Mapa integrado con OpenStreetMap. Aquí se muestran '
+                            'las ubicaciones GPS de tus reportes y puedes abrir '
+                            'cada punto directamente en la app de mapas.',
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 18),
+                  if (conCoordenadas.isNotEmpty)
+                    SizedBox(
+                      height: 320,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: FlutterMap(
+                          mapController: _mapController,
+                          options: MapOptions(
+                            initialCenter: _centroMapa(conCoordenadas),
+                            initialZoom: 12,
+                          ),
+                          children: [
+                            TileLayer(
+                              urlTemplate:
+                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.example.mi_app',
+                            ),
+                            MarkerLayer(
+                              markers: conCoordenadas
+                                  .map(
+                                    (reporte) => Marker(
+                                      point: LatLng(
+                                        reporte.latitud!,
+                                        reporte.longitud!,
+                                      ),
+                                      width: 32,
+                                      height: 32,
+                                      child: const Icon(
+                                        Icons.location_pin,
+                                        color: Colors.red,
+                                        size: 32,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox.shrink(),
                   const SizedBox(height: 18),
                   Text(
                     'Ubicaciones con GPS (${conCoordenadas.length})',
@@ -173,6 +219,14 @@ class _MapaScreenState extends State<MapaScreen> {
         ),
       ),
     );
+  }
+
+  LatLng _centroMapa(List<Reporte> reportes) {
+    final latitudes = reportes.map((reporte) => reporte.latitud!).toList();
+    final longitudes = reportes.map((reporte) => reporte.longitud!).toList();
+    final centroLat = latitudes.reduce((a, b) => a + b) / latitudes.length;
+    final centroLng = longitudes.reduce((a, b) => a + b) / longitudes.length;
+    return LatLng(centroLat, centroLng);
   }
 
   Future<void> _abrirMapa(double latitud, double longitud) async {

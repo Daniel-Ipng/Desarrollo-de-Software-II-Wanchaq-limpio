@@ -39,6 +39,7 @@ class CampoTexto extends StatelessWidget {
       readOnly: soloLectura,
       onChanged: alCambiar,
       validator: validador,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       decoration: InputDecoration(
         labelText: etiqueta,
         hintText: pista,
@@ -63,6 +64,13 @@ class CampoTexto extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
             color: Theme.of(context).colorScheme.error,
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.error,
+            width: 2,
           ),
         ),
         filled: true,

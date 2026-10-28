@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/reporte.dart';
 import '../models/zona.dart';
+import '../services/cloudinary_service.dart';
 import '../services/supabase_service.dart';
 
 /// Resultado de una operación sobre reportes.
@@ -25,6 +26,11 @@ class ResultadoReporte {
 
 /// Repositorio de reportes usando Supabase PostgreSQL directamente.
 class ReporteRepository {
+  final CloudinaryService _cloudinary;
+
+  ReporteRepository({CloudinaryService? cloudinary})
+    : _cloudinary = cloudinary ?? CloudinaryService();
+
   SupabaseClient get _db => SupabaseService.client;
 
   String get _uid {
@@ -66,19 +72,18 @@ class ReporteRepository {
       String? imagenUrl;
       if (imagen != null) {
         final extension = _extensionImagen(nombreImagen);
-        final ruta =
-            '$_uid/${DateTime.now().microsecondsSinceEpoch}.$extension';
-        await _db.storage
-            .from('reportes')
-            .uploadBinary(
-              ruta,
-              imagen,
-              fileOptions: FileOptions(
-                contentType: _tipoContenido(extension),
-                upsert: false,
-              ),
-            );
-        imagenUrl = _db.storage.from('reportes').getPublicUrl(ruta);
+        try {
+          imagenUrl = await _cloudinary.subir(
+            bytes: imagen,
+            nombre: 'reporte-${DateTime.now().microsecondsSinceEpoch}.$extension',
+            carpeta: 'reportes/$_uid',
+          );
+        } on CloudinaryException catch (e) {
+          return ResultadoReporte.fallido(
+            'No se pudo subir la foto: ${e.mensaje}',
+            codigoHttp: 502,
+          );
+        }
       }
 
       final Map<String, dynamic> datos = {
@@ -109,12 +114,12 @@ class ReporteRepository {
       return ResultadoReporte.fallido(
         'Error al crear el reporte: ${e.message}',
       );
-    } catch (_) {
-      return const ResultadoReporte.fallido(
-        'No se pudo conectar con el servidor. Verifica tu conexión.',
+    } catch (e) {
+      final mensaje = e is Exception ? e.toString() : 'Error inesperado';
+      return ResultadoReporte.fallido(
+        'No se pudo conectar con el servidor. Verifica tu conexión. Detalle: $mensaje',
       );
     }
-
   }
 
   String _extensionImagen(String? nombre) {
@@ -122,12 +127,6 @@ class ReporteRepository {
     if (extension == 'png') return 'png';
     if (extension == 'webp') return 'webp';
     return 'jpg';
-  }
-
-  String _tipoContenido(String extension) {
-    if (extension == 'png') return 'image/png';
-    if (extension == 'webp') return 'image/webp';
-    return 'image/jpeg';
   }
 
   // ─── Listar ──────────────────────────────────────────────────────────────────

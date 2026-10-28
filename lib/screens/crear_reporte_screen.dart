@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/reporte.dart';
 import '../models/zona.dart';
@@ -30,6 +32,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descripcionCtrl = TextEditingController();
   final _zonaCtrl = TextEditingController();
+  final _mapController = MapController();
   final _imagePicker = ImagePicker();
 
   static const _pasos = ['Problema', 'Ubicación', 'Detalles', 'Foto'];
@@ -512,11 +515,84 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
             ],
           ),
         const SizedBox(height: 4),
-        _mensaje(
-          'No hay un proveedor de mapas configurado en este proyecto. Las coordenadas GPS se guardarán como datos, sin mostrar un mapa embebido.',
-          colores.surfaceContainerHighest,
-          colores.onSurfaceVariant,
-          Icons.map_outlined,
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.map_outlined, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Mapa de ubicación',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (_latitud != null && _longitud != null)
+                      IconButton(
+                        tooltip: 'Centrar en la ubicación actual',
+                        onPressed: () {
+                          _mapController.move(
+                            LatLng(_latitud!, _longitud!),
+                            15,
+                          );
+                        },
+                        icon: const Icon(Icons.center_focus_strong_outlined),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 220,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _latitud != null && _longitud != null
+                            ? LatLng(_latitud!, _longitud!)
+                            : const LatLng(-13.53195, -71.96746),
+                        initialZoom: 13,
+                        onTap: (_, punto) {
+                          setState(() {
+                            _latitud = punto.latitude;
+                            _longitud = punto.longitude;
+                            _mensajeUbicacion =
+                                'Ubicación seleccionada en el mapa.';
+                          });
+                        },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.example.mi_app',
+                        ),
+                        if (_latitud != null && _longitud != null)
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(_latitud!, _longitud!),
+                                width: 28,
+                                height: 28,
+                                child: const Icon(
+                                  Icons.location_pin,
+                                  color: Colors.red,
+                                  size: 28,
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -654,8 +730,8 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
         const SizedBox(height: 12),
         _mensaje(
           _fotoBytes == null
-              ? 'La API actual no acepta imágenes. Puedes continuar sin foto; una imagen seleccionada no se enviará ni almacenará.'
-              : 'Vista previa local únicamente. La API aún no guarda imágenes y esta foto no se adjuntará al reporte.',
+              ? 'Puedes continuar sin foto o adjuntar una imagen desde la cámara o galería.'
+              : 'La imagen se almacenará de forma segura en ImageKit al enviar el reporte.',
           colores.tertiaryContainer,
           colores.onTertiaryContainer,
           Icons.info_outline,

@@ -366,6 +366,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         validator: (value) => value == null || value.length < 8
             ? 'Mínimo ocho caracteres.'
             : null,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         decoration: InputDecoration(
           labelText: 'Contraseña',
           prefixIcon: const Icon(Icons.lock_outline),
@@ -376,6 +377,12 @@ class _RegistroScreenState extends State<RegistroScreen> {
             ),
           ),
           border: const OutlineInputBorder(),
+          errorBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
         ),
       ),
       const SizedBox(height: 12),
@@ -385,10 +392,17 @@ class _RegistroScreenState extends State<RegistroScreen> {
         validator: (value) => value != _contrasenaCtrl.text
             ? 'Las contraseñas no coinciden.'
             : null,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         decoration: const InputDecoration(
           labelText: 'Confirmar contraseña',
           prefixIcon: Icon(Icons.lock_outline),
           border: OutlineInputBorder(),
+          errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
         ),
       ),
     ],
@@ -507,7 +521,7 @@ class _RegistroScreenState extends State<RegistroScreen> {
         ),
       ),
       _aviso(
-        'No hay un proveedor de mapas configurado. Puedes guardar la dirección manualmente; las coordenadas solo se enviarán si el dispositivo las obtiene.',
+        'Mapa integrado con OpenStreetMap: puedes tocar el mapa para marcar tu domicilio o usar la ubicación actual del dispositivo.',
         Theme.of(context).colorScheme.surfaceContainerHighest,
         Theme.of(context).colorScheme.onSurface,
       ),
@@ -628,9 +642,16 @@ class _RegistroScreenState extends State<RegistroScreen> {
         maxLength: maxLength,
         validator: validator,
         inputFormatters: inputFormatters,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
+          errorBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red, width: 2),
+          ),
         ),
       ),
     );
