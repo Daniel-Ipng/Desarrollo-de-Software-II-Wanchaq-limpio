@@ -4,7 +4,9 @@ import '../models/usuario.dart';
 import '../models/reporte.dart';
 import '../repositories/reporte_repository.dart';
 import '../repositories/usuario_repository.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'crear_reporte_screen.dart';
 
 /// Pantalla de inicio del ciudadano autenticado.
@@ -116,20 +118,20 @@ class _InicioScreenState extends State<InicioScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.eco, color: Colors.white, size: 36),
-                const SizedBox(height: 14),
+                const Icon(Icons.eco, color: Colors.white, size: 28),
+                const SizedBox(height: 8),
                 Text(
                   '¡Hola, $primerNombre!',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 26,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 const Text(
                   'Construyamos juntos un Wanchaq más limpio.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
                 if (widget.usuario.zonaNombre?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
@@ -138,15 +140,6 @@ class _InicioScreenState extends State<InicioScreen> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 ],
-                const SizedBox(height: 18),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: colores.primary,
-                  ),
-                  onPressed: _irACrearReporte,
-                  child: const Text('Reportar una incidencia'),
-                ),
               ],
             ),
           ),
@@ -368,28 +361,41 @@ class _InicioScreenState extends State<InicioScreen> {
       width: ancho,
       child: Card(
         clipBehavior: Clip.antiAlias,
+        color: titulo == 'Reportar' ? colores.primary : Colors.white,
         child: InkWell(
           onTap: accion,
           child: Padding(
-            padding: const EdgeInsets.all(15),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  backgroundColor: colores.primaryContainer,
-                  child: Icon(icono, color: colores.primary),
+                  backgroundColor: titulo == 'Reportar'
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : colores.primaryContainer,
+                  child: Icon(
+                    icono,
+                    color: titulo == 'Reportar'
+                        ? Colors.white
+                        : colores.primary,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
                   titulo,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: titulo == 'Reportar' ? Colors.white : null,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   subtitulo,
                   style: TextStyle(
                     fontSize: 12,
-                    color: colores.onSurfaceVariant,
+                    color: titulo == 'Reportar'
+                        ? Colors.white.withValues(alpha: 0.8)
+                        : colores.onSurfaceVariant,
                   ),
                 ),
               ],

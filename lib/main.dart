@@ -107,17 +107,46 @@ class EcoRutasApp extends StatelessWidget {
           seedColor: verde,
           brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F7F5),
+        scaffoldBackgroundColor: const Color(0xFFF4F8F7),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
+          backgroundColor: Color(0xFFF4F8F7),
           foregroundColor: Color(0xFF183D2D),
           elevation: 0,
           centerTitle: false,
+          titleTextStyle: TextStyle(
+            color: Color(0xFF10251D),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         cardTheme: CardThemeData(
-          elevation: 1,
+          color: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFD8E2DF)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFFD8E2DF)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: verde, width: 2),
+          ),
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFD7F1E5),
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
           ),
         ),
       ),
@@ -348,88 +377,94 @@ class _AppPrincipalState extends State<AppPrincipal> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.eco, color: Color(0xFF167D52)),
-            SizedBox(width: 8),
-            Text(
-              'EcoRutas Wanchaq',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Notificaciones',
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Las notificaciones aún no están disponibles.'),
-                behavior: SnackBarBehavior.floating,
+      appBar: _indice == 1 || _indice == 2
+          ? null
+          : AppBar(
+              title: const Row(
+                children: [
+                  Icon(Icons.eco, color: Color(0xFF167D52)),
+                  SizedBox(width: 8),
+                  Text(
+                    'EcoRutas Wanchaq',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-            ),
-            icon: const Icon(Icons.notifications_none_rounded),
-          ),
-          IconButton(
-            tooltip: 'Mi perfil',
-            onPressed: () => setState(() => _indice = 3),
-            icon: const Icon(Icons.person_outline),
-          ),
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              child: Text(
-                _usuario.nombres.isNotEmpty
-                    ? _usuario.nombres[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
+              actions: [
+                IconButton(
+                  tooltip: 'Notificaciones',
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Las notificaciones aún no están disponibles.',
+                      ),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  ),
+                  icon: const Icon(Icons.notifications_none_rounded),
                 ),
-              ),
-            ),
-            onSelected: (valor) {
-              if (valor == 'cerrar') _confirmarCierreSesion();
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _usuario.nombreCompleto,
-                      style: const TextStyle(
+                IconButton(
+                  tooltip: 'Mi perfil',
+                  onPressed: () => setState(() => _indice = 3),
+                  icon: const Icon(Icons.person_outline),
+                ),
+                PopupMenuButton<String>(
+                  icon: CircleAvatar(
+                    backgroundColor: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer,
+                    child: Text(
+                      _usuario.nombres.isNotEmpty
+                          ? _usuario.nombres[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
                       ),
                     ),
-                    Text(
-                      _usuario.correo,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.black54,
+                  ),
+                  onSelected: (valor) {
+                    if (valor == 'cerrar') _confirmarCierreSesion();
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      enabled: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _usuario.nombreCompleto,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            _usuario.correo,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'cerrar',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, size: 18),
+                          SizedBox(width: 8),
+                          Text('Cerrar sesión'),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'cerrar',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout, size: 18),
-                    SizedBox(width: 8),
-                    Text('Cerrar sesión'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
+                const SizedBox(width: 8),
+              ],
+            ),
       body: SafeArea(
         child: IndexedStack(index: _indice, children: pantallas),
       ),
