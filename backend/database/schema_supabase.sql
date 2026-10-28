@@ -134,6 +134,8 @@ DROP POLICY IF EXISTS "reportes_insert_propio" ON public.reportes;
 DROP POLICY IF EXISTS "reportes_select_admin" ON public.reportes;
 DROP POLICY IF EXISTS "reportes_update_admin" ON public.reportes;
 DROP POLICY IF EXISTS "perfiles_select_admin" ON public.perfiles;
+DROP POLICY IF EXISTS "perfiles_update_admin" ON public.perfiles;
+DROP POLICY IF EXISTS "zonas_gestion_admin" ON public.zonas;
 DROP POLICY IF EXISTS "reportes_storage_insert_propio" ON storage.objects;
 DROP POLICY IF EXISTS "reportes_storage_update_propio" ON storage.objects;
 DROP POLICY IF EXISTS "reportes_storage_delete_propio" ON storage.objects;
@@ -178,6 +180,16 @@ CREATE POLICY "reportes_update_admin" ON public.reportes
 CREATE POLICY "perfiles_select_admin" ON public.perfiles
     FOR SELECT TO authenticated
     USING (public.es_administrador());
+
+CREATE POLICY "perfiles_update_admin" ON public.perfiles
+    FOR UPDATE TO authenticated
+    USING (public.es_administrador())
+    WITH CHECK (public.es_administrador());
+
+CREATE POLICY "zonas_gestion_admin" ON public.zonas
+    FOR ALL TO authenticated
+    USING (public.es_administrador())
+    WITH CHECK (public.es_administrador());
 
 -- Crea el bucket público para que los enlaces de imágenes sean visibles.
 INSERT INTO storage.buckets (id, name, public)
@@ -420,6 +432,68 @@ CREATE TABLE IF NOT EXISTS public.actividad_ecologica (
     CONSTRAINT chk_actividad_puntos CHECK (puntos > 0)
 );
 
+-- Auditoría mínima de operaciones administrativas. Nunca almacena credenciales
+-- ni tokens; solo identifica la entidad y los valores de negocio modificados.
+CREATE TABLE IF NOT EXISTS public.auditoria (
+    id BIGSERIAL PRIMARY KEY,
+    actor_id UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
+    entidad VARCHAR(80) NOT NULL,
+    operacion VARCHAR(20) NOT NULL,
+    registro_id TEXT,
+    valores_anteriores JSONB,
+    valores_nuevos JSONB,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_fecha
+    ON public.auditoria (creado_en DESC);
+
+CREATE OR REPLACE FUNCTION public.registrar_auditoria()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    anterior JSONB;
+    nuevo JSONB;
+    id_registro TEXT;
+BEGIN
+    anterior := CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) END;
+    nuevo := CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) END;
+    id_registro := COALESCE(nuevo->>'id', anterior->>'id');
+    INSERT INTO public.auditoria (
+        actor_id, entidad, operacion, registro_id,
+        valores_anteriores, valores_nuevos
+    )
+    VALUES (
+        auth.uid(), TG_TABLE_NAME, TG_OP, id_registro, anterior, nuevo
+    );
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_auditoria_perfiles ON public.perfiles;
+CREATE TRIGGER trg_auditoria_perfiles
+    AFTER INSERT OR UPDATE OR DELETE ON public.perfiles
+    FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria();
+DROP TRIGGER IF EXISTS trg_auditoria_camiones ON public.camiones;
+CREATE TRIGGER trg_auditoria_camiones
+    AFTER INSERT OR UPDATE OR DELETE ON public.camiones
+    FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria();
+DROP TRIGGER IF EXISTS trg_auditoria_rutas ON public.rutas;
+CREATE TRIGGER trg_auditoria_rutas
+    AFTER INSERT OR UPDATE OR DELETE ON public.rutas
+    FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria();
+DROP TRIGGER IF EXISTS trg_auditoria_zonas ON public.zonas;
+CREATE TRIGGER trg_auditoria_zonas
+    AFTER INSERT OR UPDATE OR DELETE ON public.zonas
+    FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria();
+DROP TRIGGER IF EXISTS trg_auditoria_reportes ON public.reportes;
+CREATE TRIGGER trg_auditoria_reportes
+    AFTER INSERT OR UPDATE OR DELETE ON public.reportes
+    FOR EACH ROW EXECUTE FUNCTION public.registrar_auditoria();
+
 CREATE INDEX IF NOT EXISTS idx_actividad_ecologica_usuario
     ON public.actividad_ecologica (usuario_id, creado_en DESC);
 
@@ -483,6 +557,7 @@ GRANT SELECT ON public.camiones, public.rutas, public.horarios_recoleccion,
 GRANT SELECT, INSERT, UPDATE ON public.recolecciones TO authenticated;
 GRANT SELECT, UPDATE ON public.notificaciones TO authenticated;
 GRANT SELECT ON public.actividad_ecologica TO authenticated;
+GRANT SELECT ON public.auditoria TO authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.camiones, public.rutas,
     public.horarios_recoleccion, public.tipos_residuo TO authenticated;
 GRANT INSERT ON public.notificaciones, public.actividad_ecologica TO authenticated;
@@ -514,6 +589,12 @@ ALTER TABLE public.recolecciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notificaciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.niveles_ecologicos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.actividad_ecologica ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auditoria ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "auditoria_select_admin" ON public.auditoria;
+CREATE POLICY "auditoria_select_admin" ON public.auditoria
+    FOR SELECT TO authenticated
+    USING (public.es_administrador());
 
 DROP POLICY IF EXISTS "camiones_select_autenticados" ON public.camiones;
 DROP POLICY IF EXISTS "camiones_gestion_admin" ON public.camiones;
@@ -629,3 +710,37 @@ CREATE TRIGGER trg_proteger_campos_privilegiados
     BEFORE UPDATE ON public.perfiles
     FOR EACH ROW
     EXECUTE FUNCTION public.proteger_campos_privilegiados_perfil();
+
+CREATE OR REPLACE FUNCTION public.evitar_ultimo_admin_inactivo()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF OLD.rol IN ('admin', 'administrador')
+       AND OLD.activo = TRUE
+       AND (
+           NEW.activo = FALSE
+           OR NEW.rol NOT IN ('admin', 'administrador')
+       )
+       AND (
+           SELECT COUNT(*)
+           FROM public.perfiles
+           WHERE rol IN ('admin', 'administrador')
+             AND activo = TRUE
+             AND id <> OLD.id
+       ) = 0
+    THEN
+        RAISE EXCEPTION 'No se puede dejar el sistema sin un administrador activo';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_evitar_ultimo_admin_inactivo
+    ON public.perfiles;
+CREATE TRIGGER trg_evitar_ultimo_admin_inactivo
+    BEFORE UPDATE ON public.perfiles
+    FOR EACH ROW
+    EXECUTE FUNCTION public.evitar_ultimo_admin_inactivo();

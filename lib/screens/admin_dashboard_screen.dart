@@ -7,6 +7,8 @@ import '../models/reporte.dart';
 import '../models/usuario.dart';
 import '../repositories/reporte_repository.dart';
 import '../repositories/usuario_repository.dart';
+import '../repositories/administracion_repository.dart';
+import 'administracion_screen.dart';
 import '../widgets/chip_estado.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -31,6 +33,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _verificando = true;
   String? _error;
   List<Reporte> _reportes = [];
+  ResumenAdministrativo? _resumen;
 
   @override
   void initState() {
@@ -47,13 +50,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       await widget.repositorio.verificarAccesoAdministrador();
       if (!mounted) return;
       setState(() => _verificando = false);
-      await _cargarReportes();
+      await Future.wait([_cargarReportes(), _cargarResumen()]);
     } on AuthException catch (_) {
       widget.alCerrarSesion();
     } catch (_) {
       _mostrarError(
         'No se pudo validar el acceso. Comprueba tu conexión e inténtalo de nuevo.',
       );
+    }
+  }
+
+  Future<void> _cargarResumen() async {
+    try {
+      final resumen = await AdministracionRepository().cargarResumen();
+      if (mounted) setState(() => _resumen = resumen);
+    } catch (_) {
+      // Los indicadores de incidencias siguen siendo útiles si las tablas
+      // operativas aún no se han aplicado en Supabase.
     }
   }
 
@@ -96,7 +109,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         actions: [
           IconButton(
             tooltip: 'Actualizar datos',
-            onPressed: _verificando ? null : _cargarReportes,
+            onPressed: _verificando
+                ? null
+                : () async {
+                    await _cargarReportes();
+                    await _cargarResumen();
+                  },
             icon: const Icon(Icons.refresh),
           ),
           IconButton(
@@ -147,9 +165,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       context,
                       icono: Icons.people_outline,
                       titulo: 'Ciudadanos',
-                      descripcion:
-                          'La consulta de perfiles requiere habilitar su vista administrativa.',
-                      onTap: _mostrarModuloPendiente,
+                      descripcion: 'Usuarios, roles y estado de las cuentas.',
+                      onTap: _abrirAdministracion,
+                      contador: _resumen?.usuarios,
+                    ),
+                    _modulo(
+                      context,
+                      icono: Icons.local_shipping_outlined,
+                      titulo: 'Flota y operación',
+                      descripcion: 'Camiones, zonas, rutas y tipos de residuos.',
+                      onTap: _abrirAdministracion,
+                      contador: _resumen?.camiones,
                     ),
                     const SizedBox(height: 10),
                     Card(
@@ -261,7 +287,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       mainAxisSpacing: 10,
       childAspectRatio: 1.45,
       children: [
-        _indicador('Total', _reportes.length, Icons.assignment, colores.primary),
+        _indicador('Incidencias', _reportes.length, Icons.assignment, colores.primary),
         _indicador(
           'Pendientes',
           pendientes,
@@ -275,6 +301,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Colors.blue.shade700,
         ),
         _indicador('Resueltos', resueltos, Icons.check_circle, Colors.green),
+        if (_resumen != null)
+          _indicador(
+            'Usuarios',
+            _resumen!.usuarios,
+            Icons.people_outline,
+            colores.secondary,
+          ),
+        if (_resumen != null)
+          _indicador(
+            'Camiones',
+            _resumen!.camiones,
+            Icons.local_shipping_outlined,
+            Colors.indigo,
+          ),
+        if (_resumen != null)
+          _indicador(
+            'Zonas',
+            _resumen!.zonas,
+            Icons.location_on_outlined,
+            Colors.teal,
+          ),
+        if (_resumen != null)
+          _indicador(
+            'Recolecciones',
+            _resumen!.recolecciones,
+            Icons.recycling_outlined,
+            Colors.brown,
+          ),
       ],
     );
   }
@@ -348,11 +402,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  void _mostrarModuloPendiente() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'La gestión de perfiles todavía no está habilitada en este proyecto.',
+  void _abrirAdministracion() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AdministracionScreen(
+          repositorio: AdministracionRepository(),
         ),
       ),
     );

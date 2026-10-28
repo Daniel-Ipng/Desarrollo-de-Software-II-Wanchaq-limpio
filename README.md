@@ -36,10 +36,15 @@ no fue proporcionada. Nunca sustituyas la publishable key por una
 Las cuentas con rol `admin` o `administrador` acceden automáticamente al panel
 administrativo después de iniciar sesión. El panel permite:
 
-- consultar indicadores de incidencias pendientes, en proceso y resueltas;
+- consultar indicadores reales de usuarios por rol, camiones, zonas, rutas,
+  recolecciones e incidencias;
 - filtrar incidencias por estado y actualizar su estado;
 - visualizar en un mapa OpenStreetMap las incidencias que tienen coordenadas
   GPS;
+- consultar y activar o desactivar perfiles autorizados;
+- registrar y editar camiones, zonas y tipos de residuos;
+- consultar rutas y datos operativos existentes;
+- registrar cambios administrativos en la tabla `auditoria`;
 - actualizar los datos con el botón de refresco o deslizando la pantalla.
 
 Estas consultas y cambios dependen de las políticas administrativas del archivo
@@ -47,6 +52,11 @@ Estas consultas y cambios dependen de las políticas administrativas del archivo
 Si el panel no muestra reportes, vuelve a ejecutar ese esquema en el proyecto
 Supabase y confirma que el usuario tenga un perfil activo con rol
 `admin` o `administrador`.
+
+La creación de usuarios de Supabase Auth (administradores u operadores) no se
+realiza desde el cliente Flutter: requiere una invitación o una Edge Function
+segura con privilegios de servidor. La aplicación no almacena ni envía
+contraseñas administrativas.
 
 ## Módulo ciudadano
 
